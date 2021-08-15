@@ -1,15 +1,15 @@
 {
-  "name": "spacetime-reviews",
+  "name": "auditor-neo4j",
   "version": "0.1.0",
-  "author": "William Lyon",
+  "author": "Bryan Corder",
   "private": true,
   "dependencies": {
-    "mapbox-gl": "git+https://git@github.com/johnymontana/mapbox-gl-js.git",
+    "mapbox-gl": "^2.4.0",
     "moment": "^2.22.1",
-    "neo4j-driver": "^1.6.1",
+    "neo4j-driver": "^4.3.1",
     "nivo": "^0.31.0",
     "react": "^16.3.2",
-    "react-dom": "^16.3.2",
+    "react-dom": "^16.14.0",
     "react-scripts": "1.1.4",
     "react-virtualized": "^9.19.0"
   },

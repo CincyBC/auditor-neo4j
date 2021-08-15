@@ -4,7 +4,7 @@ import Map from "./components/Map";
 import ReviewSummary from "./components/ReviewSummary";
 import CategorySummary from "./components/CategorySummary";
 import neo4j from "neo4j-driver/lib/browser/neo4j-web";
-import { Date } from "neo4j-driver/lib/v1/temporal-types";
+import { Date } from 'neo4j-driver-core/lib/temporal-types.js';
 import moment from "moment";
 
 class App extends Component {
@@ -22,9 +22,9 @@ class App extends Component {
       categoryData: [],
       selectedBusiness: false,
       mapCenter: {
-        latitude: 33.45891430753237,
-        longitude: -112.06830118178001,
-        radius: 1.5,
+        latitude: 39.139185,
+        longitude: -84.516206,
+        radius: 1,
         zoom: 14
       }
     };
@@ -183,7 +183,7 @@ class App extends Component {
     }
   };
 
-  handleSubmit = () => {};
+  handleSubmit = () => { };
 
   radiusChange = e => {
     this.setState(
@@ -259,7 +259,7 @@ class App extends Component {
                     className="form-control"
                     placeholder="Latitude"
                     value={this.state.mapCenter.latitude}
-                    onChange={()=>(true)}
+                    onChange={() => (true)}
                   />
                 </div>
               </div>
@@ -274,7 +274,7 @@ class App extends Component {
                     className="form-control"
                     placeholder="Longitude"
                     value={this.state.mapCenter.longitude}
-                    onChange={()=>true}
+                    onChange={() => true}
                   />
                 </div>
               </div>
