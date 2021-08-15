@@ -35,7 +35,6 @@ class App extends Component {
         process.env.REACT_APP_NEO4J_USER,
         process.env.REACT_APP_NEO4J_PASSWORD
       ),
-      { encrypted: true }
     );
     this.fetchBusinesses();
     this.fetchCategories();
