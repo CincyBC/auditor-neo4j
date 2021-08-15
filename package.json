@@ -4,7 +4,7 @@
   "author": "Bryan Corder",
   "private": true,
   "dependencies": {
-    "mapbox-gl": "^2.4.0",
+    "mapbox-gl": "^1.13.1",
     "moment": "^2.22.1",
     "neo4j-driver": "^4.3.1",
     "nivo": "^0.31.0",
