@@ -257,7 +257,7 @@ class App extends Component {
             <Map
               mapSearchPointChange={this.mapSearchPointChange}
               mapCenter={this.state.mapCenter}
-              businesses={this.state.businesses}
+              singleFamily={this.state.singleFamily}
               businessSelected={this.businessSelected}
               selectedBusiness={this.state.selectedBusiness}
             />
@@ -271,7 +271,7 @@ class App extends Component {
               <div className="chart-title">Review Star Summary</div>
               <div className="chart-stage">
                 <ReviewSummary
-                  businesses={this.state.businesses}
+                  singleFamily={this.state.singleFamily}
                   starsData={this.state.starsData}
                 />
               </div>
