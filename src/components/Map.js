@@ -59,29 +59,30 @@ class Map extends Component {
 
   businessPopupHTML = business => {
     return `<ul>
-    <li>
-      <strong>Name: </strong> ${business.name}
-    </li>
-    <li>
-      <strong>Address: </strong> ${business.address}
-    </li>
-    <li>
-      <strong>City: </strong> ${business.city}
-    </li>
-    <li>
-      <strong>Categories: </strong> ${business.categories.join(", ")}
-    </li>
+    <li><strong>Abatement Value: </strong>
+    // <li>
+    //   <strong>Name: </strong> ${business.name}
+    // </li>
+    // <li>
+    //   <strong>Address: </strong> ${business.address}
+    // </li>
+    // <li>
+    //   <strong>City: </strong> ${business.city}
+    // </li>
+    // <li>
+    //   <strong>Categories: </strong> ${business.categories.join(", ")}
+    // </li>
   </ul>`;
   };
 
   setBusinessMarkers() {
-    const { businesses } = this.props;
+    const { singleFamily } = this.props;
     this.businessMarkers.map(m => {
       m.remove();
       return true;
     });
 
-    this.businessMarkers = businesses.map(b => {
+    this.businessMarkers = singleFamily.map(b => {
       return new mapboxgl.Marker()
         .setLngLat([b.location.x, b.location.y])
         .setPopup(
@@ -158,7 +159,7 @@ class Map extends Component {
       .addTo(this.map)
       .setPopup(
         new mapboxgl.Popup().setText(
-          "Drag me to search for businessees with reviews! Also, try changing the query radius and date range."
+          "Drag me to see aggregated tax abatement data for single family homes in an area. Change the circle size above."
         )
       )
       .setDraggable(true)

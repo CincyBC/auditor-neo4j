@@ -4,8 +4,6 @@ import Map from "./components/Map";
 import ReviewSummary from "./components/ReviewSummary";
 import CategorySummary from "./components/CategorySummary";
 import neo4j from "neo4j-driver/lib/browser/neo4j-web";
-import { Date } from 'neo4j-driver-core/lib/temporal-types.js';
-import moment from "moment";
 
 class App extends Component {
   constructor(props) {
@@ -14,16 +12,13 @@ class App extends Component {
 
     this.state = {
       focusedInput,
-      startDate: moment("2014-01-01"),
-      endDate: moment("2018-01-01"),
-      businesses: [],
+      singleFamily: [],
       starsData: [],
-      reviews: [{ day: "2018-01-01", value: 10 }],
       categoryData: [],
       selectedBusiness: false,
       mapCenter: {
-        latitude: 39.139185,
-        longitude: -84.516206,
+        latitude: 39.1092111026677,
+        longitude: -84.5152077641052,
         radius: 1,
         zoom: 14
       }
@@ -38,27 +33,8 @@ class App extends Component {
     );
     this.fetchBusinesses();
     this.fetchCategories();
+    // this.fetchCategories();
   }
-
-  onDatesChange = ({ startDate, endDate }) => {
-    if (startDate && endDate) {
-      this.setState(
-        {
-          startDate,
-          endDate
-        },
-        () => {
-          this.fetchBusinesses();
-          this.fetchCategories();
-        }
-      );
-    } else {
-      this.setState({
-        startDate,
-        endDate
-      });
-    }
-  };
 
   onFocusChange = focusedInput => this.setState({ focusedInput });
 
@@ -80,28 +56,22 @@ class App extends Component {
   };
 
   fetchCategories = () => {
-    const { mapCenter, startDate, endDate } = this.state;
+    const { mapCenter } = this.state;
     const session = this.driver.session();
 
     session
       .run(
-        `MATCH (b:Business)<-[:REVIEWS]-(r:Review)
-        WHERE $start <= r.date <= $end AND distance(b.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
-        WITH DISTINCT b
-        OPTIONAL MATCH (b)-[:IN_CATEGORY]->(c:Category)
-        WITH c.name AS cat, COUNT(b) AS num ORDER BY num DESC LIMIT 25
+        `MATCH (s:SINGLE_FAMILY)
+        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
+        WITH DISTINCT s
+        OPTIONAL MATCH (s)-[:IN_CATEGORY]->(c:Category)
+        WITH c.name AS cat, COUNT(s) AS num ORDER BY num DESC
         RETURN COLLECT({id: cat, label: cat, value: toFloat(num)}) AS categoryData
     `,
         {
           lat: mapCenter.latitude,
           lon: mapCenter.longitude,
-          radius: mapCenter.radius,
-          start: new Date(
-            startDate.year(),
-            startDate.month() + 1,
-            startDate.date()
-          ),
-          end: new Date(endDate.year(), endDate.month() + 1, endDate.date())
+          radius: mapCenter.radius
         }
       )
       .then(result => {
@@ -119,40 +89,28 @@ class App extends Component {
   };
 
   fetchBusinesses = () => {
-    const { mapCenter, startDate, endDate } = this.state;
+    const { mapCenter } = this.state;
     const session = this.driver.session();
     session
       .run(
         `
-        MATCH (b:Business)<-[:REVIEWS]-(r:Review)
-        WHERE $start <= r.date <= $end AND distance(b.location, point({latitude: $lat, longitude: $lon})) < ( $radius * 1000)
-        OPTIONAL MATCH (b)-[:IN_CATEGORY]->(c:Category)
-        WITH r,b, COLLECT(c.name) AS categories
-        WITH COLLECT(DISTINCT b {.*, categories}) AS businesses, COLLECT(DISTINCT r) AS reviews
-        UNWIND reviews AS r
-        WITH businesses, r.stars AS stars, COUNT(r) AS num ORDER BY stars
-        WITH businesses, COLLECT({stars: toString(stars), count:toFloat(num)}) AS starsData
-        RETURN businesses, starsData`,
+        MATCH (s:SINGLE_FAMILY)
+        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ( $radius * 1000)
+        RETURN s`,
         {
           lat: mapCenter.latitude,
           lon: mapCenter.longitude,
-          radius: mapCenter.radius,
-          start: new Date(
-            startDate.year(),
-            startDate.month() + 1,
-            startDate.date()
-          ),
-          end: new Date(endDate.year(), endDate.month() + 1, endDate.date())
+          radius: mapCenter.radius
         }
       )
       .then(result => {
         console.log(result);
         const record = result.records[0];
-        const businesses = record.get("businesses");
+        const singleFamily = record.get("s");
         const starsData = record.get("starsData");
 
         this.setState({
-          businesses,
+          singleFamily,
           starsData
         });
         session.close();
@@ -197,30 +155,6 @@ class App extends Component {
         this.fetchCategories();
       }
     );
-  };
-
-  dateChange = e => {
-    if (e.target.id === "timeframe-start") {
-      this.setState(
-        {
-          startDate: moment(e.target.value)
-        },
-        () => {
-          this.fetchBusinesses();
-          this.fetchCategories();
-        }
-      );
-    } else if (e.target.id === "timeframe-end") {
-      this.setState(
-        {
-          endDate: moment(e.target.value)
-        },
-        () => {
-          this.fetchBusinesses();
-          this.fetchCategories();
-        }
-      );
-    }
   };
 
   render() {
@@ -278,7 +212,7 @@ class App extends Component {
                 </div>
               </div>
 
-              <div className="col-sm-2">
+              {/* <div className="col-sm-2">
                 <div className="tool timeframe">
                   <h5>Start Date</h5>
                   <input
@@ -290,9 +224,9 @@ class App extends Component {
                     onChange={this.dateChange}
                   />
                 </div>
-              </div>
+              </div> */}
 
-              <div className="col-sm-2">
+              {/* <div className="col-sm-2">
                 <div className="tool timeframe">
                   <h5>End Date</h5>
                   <input
@@ -304,15 +238,15 @@ class App extends Component {
                     onChange={this.dateChange}
                   />
                 </div>
-              </div>
+              </div> */}
 
               <div className="col-sm-2">
                 <div className="tool">
-                  <h5>SpaceTime Reviews</h5>
-                  <span>Data from <a href="https://www.yelp.com/dataset">Yelp Open Dataset</a></span>
-                  <button id="refresh" className="btn btn-primary btn-block">
+                  <h5>Data Downloaded From</h5>
+                  <span><a href="https://www.hamiltoncountyauditor.org">Hamilton County Auditor Website</a></span>
+                  {/* <button id="refresh" className="btn btn-primary btn-block">
                     Refresh
-                  </button>
+                  </button> */}
                 </div>
               </div>
             </div>
