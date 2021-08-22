@@ -98,7 +98,7 @@ class App extends Component {
         `
         MATCH (s:SINGLE_FAMILY)-[:APPRAISES_AT]->(v:VALUE)
         WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
-        WITH COLLECT(DISTINCT s {.*}) AS singleFamily, COLLECT(toFloat(v.abatement_value)) AS abatedlist, 
+        WITH COLLECT({parcel_number:s.parcel_number, location:s.location, abatement_value:toFloat(v.abatement_value), total_value:toFloat(v.total_value)}) AS singleFamily, COLLECT(toFloat(v.abatement_value)) AS abatedlist, 
         SUM(toFloat(v.total_value)) AS totalvalue, AVG(toFloat(v.abatement_value)) AS avgabate, SUM(toFloat(v.abatement_value)) AS totalabate
         RETURN singleFamily,avgabate,totalvalue,totalabate`,
         {

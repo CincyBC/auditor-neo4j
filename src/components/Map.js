@@ -61,10 +61,10 @@ class Map extends Component {
     // window.console.log(s)
     return `<ul>
     <li>
-      <strong>Abatement Value: </strong> ${s.abatement_value}
+      <strong>Abatement Value: $</strong> ${s.abatement_value.toLocaleString()}
     </li>
     <li>
-      <strong>Total Value: </strong> ${s.total_value}
+      <strong>Total Value: $</strong> ${s.total_value.toLocaleString()}
     </li>
   </ul>`;
   };
