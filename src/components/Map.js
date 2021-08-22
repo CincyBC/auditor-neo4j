@@ -12,7 +12,7 @@ class Map extends Component {
       zoom: props.mapCenter.zoom
     };
 
-    this.businessMarkers = [];
+    this.houseMarkers = [];
   }
 
   // https://stackoverflow.com/questions/37599561/drawing-a-circle-with-the-radius-in-miles-meters-with-mapbox-gl-js
@@ -57,43 +57,37 @@ class Map extends Component {
     };
   };
 
-  businessPopupHTML = business => {
+  housePopupHTML = s => {
+    // window.console.log(s)
     return `<ul>
-    <li><strong>Abatement Value: </strong>
-    // <li>
-    //   <strong>Name: </strong> ${business.name}
-    // </li>
-    // <li>
-    //   <strong>Address: </strong> ${business.address}
-    // </li>
-    // <li>
-    //   <strong>City: </strong> ${business.city}
-    // </li>
-    // <li>
-    //   <strong>Categories: </strong> ${business.categories.join(", ")}
-    // </li>
+    <li>
+      <strong>Abatement Value: </strong> ${s.abatement_value}
+    </li>
+    <li>
+      <strong>Total Value: </strong> ${s.total_value}
+    </li>
   </ul>`;
   };
 
-  setBusinessMarkers() {
+  setHouseMarkers() {
     const { singleFamily } = this.props;
-    this.businessMarkers.map(m => {
+    this.houseMarkers.map(m => {
       m.remove();
       return true;
     });
 
-    this.businessMarkers = singleFamily.map(b => {
+    this.houseMarkers = singleFamily.map(s => {
       return new mapboxgl.Marker()
-        .setLngLat([b.location.x, b.location.y])
+        .setLngLat([s.location.x, s.location.y])
         .setPopup(
-          new mapboxgl.Popup({ offset: 25 }).setHTML(this.businessPopupHTML(b))
+          new mapboxgl.Popup({ offset: 25 }).setHTML(this.housePopupHTML(s))
         )
         .addTo(this.map);
     });
   }
 
   componentDidUpdate() {
-    this.setBusinessMarkers();
+    this.setHouseMarkers();
     if (this.mapLoaded) {
       this.map
         .getSource("polygon")
@@ -177,7 +171,7 @@ class Map extends Component {
       });
     });
 
-    this.setBusinessMarkers();
+    this.setHouseMarkers();
   }
 
   render() {

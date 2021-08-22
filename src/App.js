@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import "./App.css";
 import Map from "./components/Map";
-import ReviewSummary from "./components/ReviewSummary";
-import CategorySummary from "./components/CategorySummary";
+// import ReviewSummary from "./components/ReviewSummary";
+// import CategorySummary from "./components/CategorySummary";
 import neo4j from "neo4j-driver/lib/browser/neo4j-web";
 
 class App extends Component {
@@ -16,6 +16,9 @@ class App extends Component {
       starsData: [],
       categoryData: [],
       selectedBusiness: false,
+      totalValue: 0,
+      totalAbate: 0,
+      avgAbate: 0,
       mapCenter: {
         latitude: 39.1092111026677,
         longitude: -84.5152077641052,
@@ -31,16 +34,15 @@ class App extends Component {
         process.env.REACT_APP_NEO4J_PASSWORD
       ),
     );
-    this.fetchBusinesses();
-    this.fetchCategories();
+    this.fetchSingleFamily();
     // this.fetchCategories();
   }
 
   onFocusChange = focusedInput => this.setState({ focusedInput });
 
-  businessSelected = b => {
+  businessSelected = s => {
     this.setState({
-      selectedBusiness: b
+      selectedBusiness: s
     });
   };
 
@@ -55,48 +57,50 @@ class App extends Component {
     });
   };
 
-  fetchCategories = () => {
-    const { mapCenter } = this.state;
-    const session = this.driver.session();
+  // fetchCategories = () => {
+  //   const { mapCenter } = this.state;
+  //   const session = this.driver.session();
 
-    session
-      .run(
-        `MATCH (s:SINGLE_FAMILY)
-        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
-        WITH DISTINCT s
-        OPTIONAL MATCH (s)-[:IN_CATEGORY]->(c:Category)
-        WITH c.name AS cat, COUNT(s) AS num ORDER BY num DESC
-        RETURN COLLECT({id: cat, label: cat, value: toFloat(num)}) AS categoryData
-    `,
-        {
-          lat: mapCenter.latitude,
-          lon: mapCenter.longitude,
-          radius: mapCenter.radius
-        }
-      )
-      .then(result => {
-        console.log(result);
-        const categoryData = result.records[0].get("categoryData");
-        this.setState({
-          categoryData
-        });
-        session.close();
-      })
-      .catch(e => {
-        console.log(e);
-        session.close();
-      });
-  };
+  //   session
+  //     .run(
+  //       `MATCH (s:SINGLE_FAMILY)
+  //       WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
+  //       WITH DISTINCT s
 
-  fetchBusinesses = () => {
+  //       WITH c.name AS cat, COUNT(s) AS num ORDER BY num DESC
+  //       RETURN COLLECT({id: cat, label: cat, value: toFloat(num)}) AS categoryData
+  //   `,
+  //       {
+  //         lat: mapCenter.latitude,
+  //         lon: mapCenter.longitude,
+  //         radius: mapCenter.radius
+  //       }
+  //     )
+  //     .then(result => {
+  //       console.log(result);
+  //       const categoryData = result.records[0].get("categoryData");
+  //       this.setState({
+  //         categoryData
+  //       });
+  //       session.close();
+  //     })
+  //     .catch(e => {
+  //       console.log(e);
+  //       session.close();
+  //     });
+  // };
+
+  fetchSingleFamily = () => {
     const { mapCenter } = this.state;
     const session = this.driver.session();
     session
       .run(
         `
-        MATCH (s:SINGLE_FAMILY)
-        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ( $radius * 1000)
-        RETURN s`,
+        MATCH (s:SINGLE_FAMILY)-[:APPRAISES_AT]->(v:VALUE)
+        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
+        WITH COLLECT(DISTINCT s {.*}) AS singleFamily, COLLECT(toFloat(v.abatement_value)) AS abatedlist, 
+        SUM(toFloat(v.total_value)) AS totalvalue, AVG(toFloat(v.abatement_value)) AS avgabate, SUM(toFloat(v.abatement_value)) AS totalabate
+        RETURN singleFamily,avgabate,totalvalue,totalabate`,
         {
           lat: mapCenter.latitude,
           lon: mapCenter.longitude,
@@ -106,12 +110,16 @@ class App extends Component {
       .then(result => {
         console.log(result);
         const record = result.records[0];
-        const singleFamily = record.get("s");
-        const starsData = record.get("starsData");
+        const singleFamily = record.get("singleFamily");
+        const avgAbate = record.get("avgabate");
+        const totalValue = record.get("totalvalue");
+        const totalAbate = record.get("totalabate");
 
         this.setState({
           singleFamily,
-          starsData
+          avgAbate,
+          totalValue,
+          totalAbate
         });
         session.close();
       })
@@ -127,8 +135,8 @@ class App extends Component {
       this.state.mapCenter.latitude !== prevState.mapCenter.latitude ||
       this.state.mapCenter.longitude !== prevState.mapCenter.longitude
     ) {
-      this.fetchBusinesses();
-      this.fetchCategories();
+      this.fetchSingleFamily();
+      // this.fetchCategories();
     }
     if (
       this.state.selectedBusiness &&
@@ -151,8 +159,8 @@ class App extends Component {
         }
       },
       () => {
-        this.fetchBusinesses();
-        this.fetchCategories();
+        this.fetchSingleFamily();
+        // this.fetchCategories();
       }
     );
   };
@@ -240,9 +248,9 @@ class App extends Component {
                 </div>
               </div> */}
 
-              <div className="col-sm-2">
+              <div className="col-sm-4">
                 <div className="tool">
-                  <h5>Data Downloaded From</h5>
+                  <h5>Data Downloaded From The</h5>
                   <span><a href="https://www.hamiltoncountyauditor.org">Hamilton County Auditor Website</a></span>
                   {/* <button id="refresh" className="btn btn-primary btn-block">
                     Refresh
@@ -266,7 +274,20 @@ class App extends Component {
 
         <div id="app-sidebar">
           <br />
-          <div id="chart-02">
+          <div>
+            <ul>
+              <li>
+                <strong>Average Abatement Value: </strong> ${this.state.avgAbate.toLocaleString()}
+              </li>
+              <li>
+                <strong>Total Abatement Value: </strong> ${this.state.totalAbate.toLocaleString()}
+              </li>
+              <li>
+                <strong>Total Value of Selected Properties: </strong> ${this.state.totalValue.toLocaleString()}
+              </li>
+            </ul>
+          </div>
+          {/* <div id="chart-02">
             <div className="chart-wrapper">
               <div className="chart-title">Review Star Summary</div>
               <div className="chart-stage">
@@ -280,10 +301,10 @@ class App extends Component {
                 range.
               </div>
             </div>
-          </div>
+          </div> */}
           <br />
           <div id="chart-03">
-            <div className="chart-wrapper">
+            {/* <div className="chart-wrapper">
               <div className="chart-title">Category Summary</div>
               <div className="chart-stage">
                 <CategorySummary categoryData={this.state.categoryData} />
@@ -292,7 +313,7 @@ class App extends Component {
                 Business category breakdown for businesses in the selected
                 radius with reviews in the date range.
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
