@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import "./App.css";
 import Map from "./components/Map";
 import ReviewSummary from "./components/ReviewSummary";
-import neo4j, { ConfiguredCustomResolver } from "neo4j-driver/lib/browser/neo4j-web";
+import neo4j from "neo4j-driver/lib/browser/neo4j-web";
 
 class App extends Component {
   constructor(props) {
