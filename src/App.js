@@ -1,9 +1,8 @@
 import React, { Component } from "react";
 import "./App.css";
 import Map from "./components/Map";
-// import ReviewSummary from "./components/ReviewSummary";
-// import CategorySummary from "./components/CategorySummary";
-import neo4j from "neo4j-driver/lib/browser/neo4j-web";
+import ReviewSummary from "./components/ReviewSummary";
+import neo4j, { ConfiguredCustomResolver } from "neo4j-driver/lib/browser/neo4j-web";
 
 class App extends Component {
   constructor(props) {
@@ -13,7 +12,7 @@ class App extends Component {
     this.state = {
       focusedInput,
       singleFamily: [],
-      starsData: [],
+      abateBin: [],
       categoryData: [],
       selectedBusiness: false,
       totalValue: 0,
@@ -35,7 +34,7 @@ class App extends Component {
       ),
     );
     this.fetchSingleFamily();
-    // this.fetchCategories();
+    this.fetchCategories();
   }
 
   onFocusChange = focusedInput => this.setState({ focusedInput });
@@ -57,38 +56,51 @@ class App extends Component {
     });
   };
 
-  // fetchCategories = () => {
-  //   const { mapCenter } = this.state;
-  //   const session = this.driver.session();
+  fetchCategories = () => {
+    const { mapCenter } = this.state;
+    const session = this.driver.session();
+    session
+      .run(
+        `
+        MATCH (s:SINGLE_FAMILY)-[:APPRAISES_AT]->(v:VALUE)
+        WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
+        RETURN v.abateBin AS values, count(*) AS count`,
+        {
+          lat: mapCenter.latitude,
+          lon: mapCenter.longitude,
+          radius: mapCenter.radius
+        }
+      )
+      .then(result => {
+        let abateBin = [];
+        for (let i = 0; i < result.records.length; i++) {
 
-  //   session
-  //     .run(
-  //       `MATCH (s:SINGLE_FAMILY)
-  //       WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
-  //       WITH DISTINCT s
+          let obj = result.records[i]
+          let jsonobj = {};
+          jsonobj["values"] = obj.get(["values"]);
+          let countNum = obj.get(["count"]);
+          if (neo4j.integer.inSafeRange(countNum)) {
+            jsonobj["count"] = countNum.toNumber()
+          };
 
-  //       WITH c.name AS cat, COUNT(s) AS num ORDER BY num DESC
-  //       RETURN COLLECT({id: cat, label: cat, value: toFloat(num)}) AS categoryData
-  //   `,
-  //       {
-  //         lat: mapCenter.latitude,
-  //         lon: mapCenter.longitude,
-  //         radius: mapCenter.radius
-  //       }
-  //     )
-  //     .then(result => {
-  //       console.log(result);
-  //       const categoryData = result.records[0].get("categoryData");
-  //       this.setState({
-  //         categoryData
-  //       });
-  //       session.close();
-  //     })
-  //     .catch(e => {
-  //       console.log(e);
-  //       session.close();
-  //     });
-  // };
+          abateBin.push(jsonobj)
+        };
+        var order = ["Under 130k", "130k - 260k", "260k - 390k", "390k - 520k", "520k - 650k", "Over 650k"];
+
+        abateBin.sort(function (a, b) {
+          return order.indexOf(a.values) - order.indexOf(b.values);
+        })
+        // console.log(abateBin);
+        this.setState({
+          abateBin
+        });
+        session.close();
+      })
+      .catch(e => {
+        console.log(e);
+        session.close();
+      });
+  };
 
   fetchSingleFamily = () => {
     const { mapCenter } = this.state;
@@ -98,7 +110,10 @@ class App extends Component {
         `
         MATCH (s:SINGLE_FAMILY)-[:APPRAISES_AT]->(v:VALUE)
         WHERE distance(s.location, point({latitude: $lat, longitude: $lon})) < ($radius * 1000)
-        WITH COLLECT({parcel_number:s.parcel_number, location:s.location, abatement_value:toFloat(v.abatement_value), total_value:toFloat(v.total_value)}) AS singleFamily, COLLECT(toFloat(v.abatement_value)) AS abatedlist, 
+        WITH s,v, COLLECT(DISTINCT v) AS values
+        UNWIND values AS va
+        WITH s,v, va.abateBin AS bins, COUNT(va) AS num ORDER BY bins
+        WITH COLLECT({parcel_number:s.parcel_number, location:s.location, abatement_value:toFloat(v.abatement_value), total_value:toFloat(v.total_value)}) AS singleFamily, COLLECT(toFloat(v.abatement_value)) AS abatedlist, COLLECT({values: toString(bins), count:toFloat(num)}) AS abateBin,
         SUM(toFloat(v.total_value)) AS totalvalue, AVG(toFloat(v.abatement_value)) AS avgabate, SUM(toFloat(v.abatement_value)) AS totalabate
         RETURN singleFamily,avgabate,totalvalue,totalabate`,
         {
@@ -108,7 +123,7 @@ class App extends Component {
         }
       )
       .then(result => {
-        console.log(result);
+        // console.log(result);
         const record = result.records[0];
         const singleFamily = record.get("singleFamily");
         const avgAbate = record.get("avgabate");
@@ -119,7 +134,7 @@ class App extends Component {
           singleFamily,
           avgAbate,
           totalValue,
-          totalAbate
+          totalAbate,
         });
         session.close();
       })
@@ -136,7 +151,7 @@ class App extends Component {
       this.state.mapCenter.longitude !== prevState.mapCenter.longitude
     ) {
       this.fetchSingleFamily();
-      // this.fetchCategories();
+      this.fetchCategories();
     }
     if (
       this.state.selectedBusiness &&
@@ -160,7 +175,7 @@ class App extends Component {
       },
       () => {
         this.fetchSingleFamily();
-        // this.fetchCategories();
+        this.fetchCategories();
       }
     );
   };
@@ -274,6 +289,18 @@ class App extends Component {
 
         <div id="app-sidebar">
           <br />
+          <div id="chart-03">
+            <div className="chart-wrapper">
+              <div className="chart-title">Abatement Counts</div>
+              <div className="chart-stage">
+                <ReviewSummary abateBin={this.state.abateBin} />
+              </div>
+              <div className="chart-notes">
+                The count of properties in the selected area by every $130k up to the new cap of $650k.
+              </div>
+            </div>
+          </div>
+          <br />
           <div>
             <ul>
               <li>
@@ -286,34 +313,6 @@ class App extends Component {
                 <strong>Total Value of Selected Properties: </strong> ${this.state.totalValue.toLocaleString()}
               </li>
             </ul>
-          </div>
-          {/* <div id="chart-02">
-            <div className="chart-wrapper">
-              <div className="chart-title">Review Star Summary</div>
-              <div className="chart-stage">
-                <ReviewSummary
-                  singleFamily={this.state.singleFamily}
-                  starsData={this.state.starsData}
-                />
-              </div>
-              <div className="chart-notes">
-                Review stars for businesses in the selected radius and date
-                range.
-              </div>
-            </div>
-          </div> */}
-          <br />
-          <div id="chart-03">
-            {/* <div className="chart-wrapper">
-              <div className="chart-title">Category Summary</div>
-              <div className="chart-stage">
-                <CategorySummary categoryData={this.state.categoryData} />
-              </div>
-              <div className="chart-notes">
-                Business category breakdown for businesses in the selected
-                radius with reviews in the date range.
-              </div>
-            </div> */}
           </div>
         </div>
       </div>
